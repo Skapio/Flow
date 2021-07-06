@@ -2,64 +2,71 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.system.measureTimeMillis
 
-fun jediTrainees(): Flow<ForceUser> = forceUsers.asFlow()
-  .transform { forceUser ->
-    if (forceUser is Padawan) {
-      delay(DELAY)
-      emit(forceUser)
-    }
-  }
 
 fun main() = runBlocking {
 
-  var time = measureTimeMillis {
-    jediTrainees()
-      .collect { jedi ->
-        delay(3 * DELAY)
-        log("Jedi ${jedi.name} is now a Jedi Master")
-      }
+  exampleOf("zip")
+
+  var characters = characterNames.asFlow()
+  var weapons = weaponNames.asFlow()
+
+  characters.zip(weapons) { character, weapon -> "$character: $weapon" }
+    .collect { log(it) }
+
+  exampleOf("onEach and zip with delays")
+
+  characters = characterNames.asFlow().onEach { delay(DELAY / 2) }
+  weapons = weaponNames.asFlow().onEach { delay(DELAY) }
+  var start = System.currentTimeMillis()
+
+  characters.zip(weapons) { character, weapon -> "$character: $weapon" }
+    .collect { characterToWeapon ->
+      log("$characterToWeapon at ${System.currentTimeMillis() - start} ms")
+    }
+
+  exampleOf("combine")
+
+  characters = characterNames.asFlow().onEach { delay(DELAY / 2) }
+  weapons = weaponNames.asFlow().onEach { delay(DELAY) }
+  start = System.currentTimeMillis()
+
+  characters.combine(weapons) { character, weapon -> "$character: $weapon" }
+    .collect { characterToWeapon ->
+      log("$characterToWeapon at ${System.currentTimeMillis() - start} ms")
+    }
+
+  exampleOf("flatMapConcat")
+
+  fun suitUp(string: String): Flow<String> = flow {
+    emit("$string gets dressed for battle")
+    delay(DELAY)
+    emit("$string dons their helmet")
   }
 
-  log("Total time $time ms")
+  characterNames.asFlow().map { suitUp(it) }
+    .collect { println(it) }
 
-  exampleOf("buffer")
+  start = System.currentTimeMillis()
 
-  time = measureTimeMillis {
-    jediTrainees()
-      .buffer()
-      .collect { jedi ->
-        delay(3 * DELAY)
-        log("Jedi ${jedi.name} is now a Jedi Master")
-      }
-  }
+  characterNames.asFlow().onEach { delay(DELAY / 2) }
+    .flatMapConcat { suitUp(it) }
+    .collect { value ->
+      log("$value at ${System.currentTimeMillis() - start} ms")
+    }
 
-  log("Total time $time ms")
+  exampleOf("flatMapMerge")
 
-  exampleOf("conflate")
+  characterNames.asFlow().onEach { delay(DELAY / 2) }
+    .flatMapMerge { suitUp(it) }
+    .collect { value ->
+      log("$value at ${System.currentTimeMillis() - start} ms")
+    }
 
-  time = measureTimeMillis {
-    jediTrainees()
-      .conflate()
-      .collect { jedi ->
-        delay(3 * DELAY)
-        log("Jedi ${jedi.name} is now a Jedi Master")
-      }
-  }
+  exampleOf("flatMapLatest")
 
-  log("Total time $time ms")
-
-  exampleOf("collectLatest")
-
-  time = measureTimeMillis {
-    jediTrainees()
-      .collectLatest { jedi ->
-        log("Jedi Master training for ${jedi.name}")
-        delay(3 * DELAY)
-        log("Jedi ${jedi.name} is now a Jedi Master")
-      }
-  }
-
-  log("Total time $time ms")
+  characterNames.asFlow().onEach { delay(DELAY / 2) }
+    .flatMapLatest { suitUp(it) }
+    .collect { value ->
+      log("$value at ${System.currentTimeMillis() - start} ms")
+    }
 }
-
-
