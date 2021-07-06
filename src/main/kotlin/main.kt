@@ -2,20 +2,23 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 fun main() = runBlocking {
 
-  exampleOf("flowOf")
+  fun starWarsSounds() = flow {
+    for (sound in listOf(chewieSound, r2d2Sound, blasterSound, saberSound)) {
+      delay(DELAY)
+      log("Emitting $sound")
+      emit(sound)
+    }
+  }
 
-  val favorites = flowOf(episodeV, episodeIX, episodeIV)
+  withTimeoutOrNull((3.1 * DELAY).toLong()) {
+    starWarsSounds().collect { sound -> log(sound) }
+  }
 
-  favorites.collect { movie -> log(movie) }
-
-  exampleOf("asFlow")
-
-  val topAdjustedGrosses = listOf(episodeIV, episodeVII, episodeV)
-
-  topAdjustedGrosses.asFlow().collect { movie -> log(movie) }
+  log("Done emitting sounds")
 
 }
 
